@@ -1,0 +1,31 @@
+# --- never commit real values or exports ---
+_Company Input/
+settings.local.ps1
+*.local.ps1
+exports/
+**/exports/**
+*.csv
+*.xlsx
+*.log
+*.txt
+!README.txt
+transcripts/
+
+# --- secrets and credentials in any form ---
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.json.secret
+*.env
+.env*
+*.publishsettings
+*.azureauth
+
+# --- tool noise ---
+.vscode/
+*.swp
+*~
+Thumbs.db
+.DS_Store
