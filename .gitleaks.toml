@@ -1,0 +1,19 @@
+title = "ps-admin-toolkit"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "guid-tenant-or-object-id"
+description = "GUID that may be a tenant, subscription, app, or object id"
+regex = '''\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b'''
+[rules.allowlist]
+regexes = ['''00000000-0000-0000-0000-000000000000''', '''<[A-Z-]+>''']
+
+[[rules]]
+id = "company-domain"
+description = "Company or acquired-company domain name"
+regex = '''(?i)\b(yourcompany\.com|acquiredco\.com)\b'''
+
+[allowlist]
+paths = ['''\.gitleaks\.toml$''', '''README\.md$''']
