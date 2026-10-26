@@ -1,0 +1,7 @@
+#!/bin/sh
+gitleaks git --pre-commit --staged --redact --no-banner -v -c "$HOME/.gitleaks-private.toml" .
+status=$?
+if [ $status -ne 0 ]; then
+  echo "gitleaks: secret or identifier found in staged changes - commit blocked."
+  exit 1
+fi

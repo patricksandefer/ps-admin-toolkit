@@ -1,0 +1,8 @@
+# settings.local.ps1.example — copy to settings.local.ps1 and fill in; never commit the filled copy
+$ProdTenants = @{
+  'corp' = '<TENANT-ID-GUID>'          # the production tenant
+}
+$PrimaryDomain     = '<company.com>'
+$AlertMailbox      = '<it-alerts@company.com>'
+$LogAnalyticsWsId  = '<WORKSPACE-ID-GUID>'
+$AzureSubscription = '<SUBSCRIPTION-NAME>'
