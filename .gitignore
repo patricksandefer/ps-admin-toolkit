@@ -29,3 +29,8 @@ transcripts/
 *~
 Thumbs.db
 .DS_Store
+
+# --- vendor installer bundles (company-identifying; live in Intune/N-central, not git) ---
+*.msi
+customer.json
+*.intunewin

@@ -1,0 +1,36 @@
+# azure-pipelines.yml - secrets and lint check for every pull request into main (Azure DevOps).
+# For GitHub, .github/workflows/scan.yml does the same job.
+trigger:
+  branches: { include: [main] }
+pr:
+  branches: { include: [main] }
+
+pool:
+  vmImage: windows-latest
+
+steps:
+  - checkout: self
+    fetchDepth: 0          # gitleaks needs full history for the git scan
+
+  - task: PowerShell@2
+    displayName: gitleaks (secrets and identifiers)
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        $v = '8.21.2'   # pin; bump deliberately
+        Invoke-WebRequest "https://github.com/gitleaks/gitleaks/releases/download/v$v/gitleaks_${v}_windows_x64.zip" -OutFile gl.zip -UseBasicParsing
+        Expand-Archive gl.zip -DestinationPath gl -Force
+        & .\gl\gitleaks.exe git --redact --no-banner --exit-code 1 -v .
+        if ($LASTEXITCODE -ne 0) { throw 'gitleaks found secrets or identifiers' }
+
+  - task: PowerShell@2
+    displayName: PSScriptAnalyzer
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+        $r = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error,Warning -ExcludeRule PSAvoidUsingWriteHost
+        $r | Format-Table -AutoSize | Out-String | Write-Host
+        if ($r | Where-Object Severity -eq 'Error') { throw "$(@($r | Where-Object Severity -eq 'Error').Count) ScriptAnalyzer error(s)" }

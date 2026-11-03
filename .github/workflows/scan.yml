@@ -1,0 +1,26 @@
+# GitHub Actions equivalent of azure-pipelines.yml for this public toolkit.
+name: scan
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  scriptanalyzer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          $r = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error,Warning -ExcludeRule PSAvoidUsingWriteHost
+          $r | Format-Table -AutoSize | Out-String | Write-Host
+          if ($r | Where-Object Severity -eq 'Error') { throw "$(@($r | Where-Object Severity -eq 'Error').Count) ScriptAnalyzer error(s)" }

@@ -16,4 +16,4 @@ description = "Company or acquired-company domain name"
 regex = '''(?i)\b(yourcompany\.com|acquiredco\.com)\b'''
 
 [allowlist]
-paths = ['''\.gitleaks\.toml$''', '''README\.md$''']
+paths = ['''\.gitleaks\.toml$''', '''README\.md$''', '''settings/.*\.example$''', '''\.example\.csv$''']   # placeholder-only files
