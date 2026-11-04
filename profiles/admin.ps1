@@ -27,6 +27,10 @@ $global:ProdTenants = @{ 'corp' = '00000000-0000-0000-0000-000000000000' }
 . (Join-Path (Split-Path $PROFILE) 'common.ps1')
 $null = Import-ToolkitSettings
 
+# Graph sign-in through the Windows account broker (the signed-in admin identity), not a browser pop-up.
+# The pop-up fails on this laptop profile; fallback if WAM misbehaves: Connect-MgGraph ... -UseDeviceCode
+if (Get-Command Set-MgGraphOption -ErrorAction SilentlyContinue) { Set-MgGraphOption -EnableLoginByWAM $true }
+
 function global:prompt {
     $ok  = $?
     $now = Get-Date -Format 'HH:mm:ss'
