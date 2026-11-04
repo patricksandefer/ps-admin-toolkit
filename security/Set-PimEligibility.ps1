@@ -21,8 +21,10 @@ param(
 )
 
 Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Identity.Governance, Microsoft.Graph.Users
-Connect-MgGraph -Scopes 'RoleManagement.ReadWrite.Directory','Directory.Read.All' -NoWelcome
-
+# Reuse an existing Graph session (e.g. from Connect-Admin); otherwise sign in with device code.
+if (-not (Get-MgContext)) {
+    Connect-MgGraph -Scopes 'RoleManagement.ReadWrite.Directory','Directory.Read.All' -UseDeviceCode -NoWelcome
+}
 $roles = Get-MgRoleManagementDirectoryRoleDefinition -All
 $rows  = Import-Csv $Csv
 foreach ($row in $rows) {

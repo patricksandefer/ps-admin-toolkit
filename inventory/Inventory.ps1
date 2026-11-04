@@ -30,10 +30,12 @@ function Save($Name, $Data) {
 Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Users, Microsoft.Graph.Groups,
               Microsoft.Graph.Identity.DirectoryManagement, Microsoft.Graph.Identity.Governance,
               Microsoft.Graph.Identity.SignIns, Microsoft.Graph.Applications, Microsoft.Graph.Reports
-Connect-MgGraph -Scopes 'Directory.Read.All','RoleManagement.Read.Directory','Application.Read.All',
+# Reuse an existing Graph session (e.g. from Connect-Admin); otherwise sign in with device code.
+if (-not (Get-MgContext)) {
+    Connect-MgGraph -Scopes 'Directory.Read.All','RoleManagement.Read.Directory','Application.Read.All',
                         'AuditLog.Read.All','Policy.Read.All','Organization.Read.All','Device.Read.All',
-                        'UserAuthenticationMethod.Read.All' -NoWelcome
-
+                        'UserAuthenticationMethod.Read.All' -UseDeviceCode -NoWelcome
+}
 # 1. Directory roles: active + eligible
 $roleDefs = Get-MgRoleManagementDirectoryRoleDefinition -All | Select-Object Id, DisplayName
 $roleMap  = @{}; foreach ($r in $roleDefs) { $roleMap[$r.Id] = $r.DisplayName }

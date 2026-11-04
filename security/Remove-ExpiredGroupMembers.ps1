@@ -21,7 +21,8 @@ param(
 )
 
 Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Groups, Microsoft.Graph.Users
-if ($Identity) { Connect-MgGraph -Identity -NoWelcome } else { Connect-MgGraph -Scopes 'GroupMember.ReadWrite.All','User.Read.All' -NoWelcome }
+if ($Identity) { Connect-MgGraph -Identity -NoWelcome }
+elseif (-not (Get-MgContext)) { Connect-MgGraph -Scopes 'GroupMember.ReadWrite.All','User.Read.All' -UseDeviceCode -NoWelcome }   # reuse Connect-Admin session if present
 
 # Load rows
 if ($Store -eq 'AzureTable') {

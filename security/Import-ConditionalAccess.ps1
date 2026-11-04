@@ -19,7 +19,10 @@ param(
 )
 
 Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Identity.SignIns
-Connect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -NoWelcome
+# Reuse an existing Graph session (e.g. from Connect-Admin); otherwise sign in with device code.
+if (-not (Get-MgContext)) {
+    Connect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -UseDeviceCode -NoWelcome
+}
 $existing = (Get-MgIdentityConditionalAccessPolicy -All).DisplayName
 
 $files = if (Test-Path $Path -PathType Container) { Get-ChildItem $Path -Filter *.json } else { Get-Item $Path }
