@@ -82,19 +82,26 @@ $tenantId = (Get-MgContext).TenantId
 $MicrosoftFirstPartyTenant = 'f8cdef31-a31e-4b4a-93e4-5f571e91255a'
 $spActivity = @{}
 try {
-    Get-MgReportServicePrincipalSignInActivity -All -ErrorAction Stop | ForEach-Object {
-        $last = @($_.LastSignInActivity.LastSignInDateTime,
-                  $_.DelegatedClientSignInActivity.LastSignInDateTime,
-                  $_.ApplicationAuthenticationClientSignInActivity.LastSignInDateTime) | Where-Object { $_ } | Sort-Object -Descending | Select-Object -First 1
-        $spActivity[$_.AppId] = $last
-    }
+    # Beta-only report; call it directly so no beta module is needed. Pages via @odata.nextLink.
+    $uri = 'https://graph.microsoft.com/beta/reports/servicePrincipalSignInActivities'
+    do {
+        $page = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+        foreach ($r in $page.value) {
+            $last = @($r.lastSignInActivity.lastSignInDateTime,
+                      $r.delegatedClientSignInActivity.lastSignInDateTime,
+                      $r.applicationAuthenticationClientSignInActivity.lastSignInDateTime) |
+                    Where-Object { $_ } | ForEach-Object { [datetime]$_ } | Sort-Object -Descending | Select-Object -First 1
+            $spActivity[$r.appId] = $last
+        }
+        $uri = $page.'@odata.nextLink'
+    } while ($uri)
 } catch { Write-Warning "Service principal sign-in report unavailable: $_" }
 $spReport = $sps | ForEach-Object {
     $last = $spActivity[$_.AppId]
     [pscustomobject]@{ DisplayName=$_.DisplayName; AppId=$_.AppId; Type=$_.ServicePrincipalType; Enabled=$_.AccountEnabled
-        Origin=(if ($_.AppOwnerOrganizationId -eq $tenantId) { 'ThisTenant' } elseif ($_.AppOwnerOrganizationId -eq $MicrosoftFirstPartyTenant) { 'Microsoft' } else { 'ThirdParty' })
+        Origin=$(if ($_.AppOwnerOrganizationId -eq $tenantId) { 'ThisTenant' } elseif ($_.AppOwnerOrganizationId -eq $MicrosoftFirstPartyTenant) { 'Microsoft' } else { 'ThirdParty' })
         Created=$_.CreatedDateTime; LastSignIn=$last
-        DaysSinceSignIn=(if ($last) { [int]((Get-Date) - $last).TotalDays } else { 'never' })
+        DaysSinceSignIn=$(if ($last) { [int]((Get-Date) - $last).TotalDays } else { 'never' })
         HasConsents=[bool]($consents | Where-Object App -eq $_.DisplayName) }
 }
 Save 'service-principals.csv' $spReport
