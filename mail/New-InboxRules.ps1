@@ -64,7 +64,10 @@ if (-not $SkipFolders) {
 
 # ---- 2. Rules via Exchange Online, in priority order ----
 Import-Module ExchangeOnlineManagement -ErrorAction Stop
-Connect-ExchangeOnline -ShowBanner:$false
+# Reuse an existing Exchange Online session (e.g. Connect-ExchangeOnline -Device); otherwise sign in with device code.
+if (-not (Get-ConnectionInformation | Where-Object State -eq 'Connected')) {
+    Connect-ExchangeOnline -Device -ShowBanner:$false
+}
 $mbx = if ($Mailbox) { $Mailbox } else { (Get-ConnectionInformation | Select-Object -First 1).UserPrincipalName }
 $existingRules = @((Get-InboxRule -Mailbox $mbx).Name)
 $script:prio = 0

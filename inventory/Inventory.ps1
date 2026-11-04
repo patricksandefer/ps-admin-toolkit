@@ -100,7 +100,10 @@ Save 'licenses.csv' $skus
 # 4, 5, 7. Exchange Online items
 if (-not $SkipExchange) {
     Import-Module ExchangeOnlineManagement
-    Connect-ExchangeOnline -ShowBanner:$false
+    # Reuse an existing Exchange Online session (e.g. Connect-ExchangeOnline -Device); otherwise sign in with device code.
+    if (-not (Get-ConnectionInformation | Where-Object State -eq 'Connected')) {
+        Connect-ExchangeOnline -Device -ShowBanner:$false
+    }
     $mbx = Get-Mailbox -ResultSize Unlimited -Properties ForwardingSmtpAddress, ForwardingAddress, DeliverToMailboxAndForward, RecipientTypeDetails
     $fwd = foreach ($m in $mbx) {
         if ($m.ForwardingSmtpAddress -or $m.ForwardingAddress) {
