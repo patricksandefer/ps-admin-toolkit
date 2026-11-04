@@ -93,4 +93,3 @@ Add-Rule '08 Migration tools' @{ FromAddressContainsWords = $MigrationFrom; Move
 Add-Rule '09 Bulk'            @{ HeaderContainsWords = @('List-Unsubscribe'); MoveToFolder = "${mbx}:\Inbox\Vendors & newsletters" }
 
 Get-InboxRule -Mailbox $mbx | Sort-Object Priority | Format-Table Priority, Name, Enabled -AutoSize
-Disconnect-ExchangeOnline -Confirm:$false

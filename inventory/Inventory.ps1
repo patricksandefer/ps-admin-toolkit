@@ -125,7 +125,6 @@ if (-not $SkipExchange) {
         [pscustomobject]@{ Domain=$d; Default=$_.Default; Type=$_.DomainType; DkimEnabled=$dkim.Enabled; DMARC=$dmarc; SPF=$spf }
     }
     Save 'domains.csv' $domains
-    Disconnect-ExchangeOnline -Confirm:$false
 }
 
 # Headline numbers for the findings memo
@@ -141,5 +140,4 @@ $summary = [ordered]@{
 }
 Save 'summary.json' $summary
 $summary | Format-Table -AutoSize
-Disconnect-MgGraph | Out-Null
 Write-Host "Done. Output in $OutDir"
