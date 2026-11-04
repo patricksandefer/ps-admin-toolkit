@@ -27,9 +27,8 @@ $global:ProdTenants = @{ 'corp' = '00000000-0000-0000-0000-000000000000' }
 . (Join-Path (Split-Path $PROFILE) 'common.ps1')
 $null = Import-ToolkitSettings
 
-# Graph sign-in through the Windows account broker (the signed-in admin identity), not a browser pop-up.
-# The pop-up fails on this laptop profile; fallback if WAM misbehaves: Connect-MgGraph ... -UseDeviceCode
-try { Set-MgGraphOption -EnableLoginByWAM $true -ErrorAction Stop } catch { }   # older Microsoft.Graph.Authentication versions; newer ones use WAM by default and lack the parameter
+# Graph sign-in: device code. The browser pop-up and the Windows account broker both fail on the admin
+# profile (and the PAW has no reason to run a localhost listener). Use Connect-Admin instead of Connect-MgGraph.
 
 function global:prompt {
     $ok  = $?
@@ -52,10 +51,21 @@ $global:PSDefaultParameterValues['Remove-*:Confirm']    = $true
 $global:PSDefaultParameterValues['Disable-*:Confirm']   = $true
 $global:PSDefaultParameterValues['Set-Mailbox:Confirm'] = $true
 
-# Reminder on connect: which tenant, and that PIM roles expire
+# Connect-Admin: device-code sign-in with the scopes a task needs, then a reminder of who/where you are.
+# Scripts that call Connect-MgGraph themselves (Inventory.ps1 etc.) reuse this session and skip their own prompt.
 function global:Connect-Admin {
     param([string[]]$Scopes = @('Directory.Read.All'))
-    Connect-MgGraph -Scopes $Scopes -NoWelcome
+    Connect-MgGraph -Scopes $Scopes -UseDeviceCode -NoWelcome
     $c = Get-MgContext
     Write-Host ("Connected as {0} to {1} at {2}. Active PIM roles expire on their own; re-activate from the PIM portal." -f $c.Account, $c.TenantId, (Get-Date -Format 'HH:mm')) -ForegroundColor Yellow
 }
+
+# Scope sets for the runbook's scripts, so the right one is one word away
+$global:AdminScopes = @{
+    Read      = @('Directory.Read.All','RoleManagement.Read.Directory','Application.Read.All','AuditLog.Read.All','Policy.Read.All','Organization.Read.All','Device.Read.All','UserAuthenticationMethod.Read.All')
+    Pim       = @('RoleManagement.ReadWrite.Directory','Directory.Read.All')
+    CA        = @('Policy.ReadWrite.ConditionalAccess','Policy.Read.All')
+    Groups    = @('GroupMember.ReadWrite.All','User.Read.All')
+    Licensing = @('User.ReadWrite.All','Organization.Read.All')
+}
+# e.g.  Connect-Admin -Scopes $AdminScopes.Read   before .\Inventory.ps1
