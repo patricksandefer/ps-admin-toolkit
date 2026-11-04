@@ -69,11 +69,35 @@ $apps = Get-MgApplication -All -Property Id,AppId,DisplayName,CreatedDateTime,Pa
 }
 Save 'apps.csv' $apps
 $grants = Get-MgOauth2PermissionGrant -All
-$spMap = @{}; Get-MgServicePrincipal -All -Property Id,DisplayName,AppId | ForEach-Object { $spMap[$_.Id] = $_.DisplayName }
+$sps = Get-MgServicePrincipal -All -Property Id,DisplayName,AppId,AccountEnabled,ServicePrincipalType,AppOwnerOrganizationId,CreatedDateTime
+$spMap = @{}; $sps | ForEach-Object { $spMap[$_.Id] = $_.DisplayName }
 $consents = $grants | ForEach-Object {
     [pscustomobject]@{ App=$spMap[$_.ClientId]; ConsentType=$_.ConsentType; Scopes=$_.Scope; Resource=$spMap[$_.ResourceId] }
 }
 Save 'app-consents.csv' $consents
+
+# 3b. Service principal sign-in activity (runbook B3: apps with no sign-ins in 90 days -> disable, wait, delete)
+$tenantId = (Get-MgContext).TenantId
+# Microsoft's public first-party tenant (identical in every tenant; documented by Microsoft, not a secret). gitleaks:allow
+$MicrosoftFirstPartyTenant = 'f8cdef31-a31e-4b4a-93e4-5f571e91255a'
+$spActivity = @{}
+try {
+    Get-MgReportServicePrincipalSignInActivity -All -ErrorAction Stop | ForEach-Object {
+        $last = @($_.LastSignInActivity.LastSignInDateTime,
+                  $_.DelegatedClientSignInActivity.LastSignInDateTime,
+                  $_.ApplicationAuthenticationClientSignInActivity.LastSignInDateTime) | Where-Object { $_ } | Sort-Object -Descending | Select-Object -First 1
+        $spActivity[$_.AppId] = $last
+    }
+} catch { Write-Warning "Service principal sign-in report unavailable: $_" }
+$spReport = $sps | ForEach-Object {
+    $last = $spActivity[$_.AppId]
+    [pscustomobject]@{ DisplayName=$_.DisplayName; AppId=$_.AppId; Type=$_.ServicePrincipalType; Enabled=$_.AccountEnabled
+        Origin=(if ($_.AppOwnerOrganizationId -eq $tenantId) { 'ThisTenant' } elseif ($_.AppOwnerOrganizationId -eq $MicrosoftFirstPartyTenant) { 'Microsoft' } else { 'ThirdParty' })
+        Created=$_.CreatedDateTime; LastSignIn=$last
+        DaysSinceSignIn=(if ($last) { [int]((Get-Date) - $last).TotalDays } else { 'never' })
+        HasConsents=[bool]($consents | Where-Object App -eq $_.DisplayName) }
+}
+Save 'service-principals.csv' $spReport
 
 # 6. MFA registration
 $mfa = Get-MgReportAuthenticationMethodUserRegistrationDetail -All |
@@ -104,7 +128,7 @@ if (-not $SkipExchange) {
     if (-not (Get-ConnectionInformation | Where-Object State -eq 'Connected')) {
         Connect-ExchangeOnline -Device -ShowBanner:$false
     }
-    $mbx = Get-EXOMailbox -ResultSize Unlimited -Properties UserPrincipalName, ForwardingSmtpAddress, ForwardingAddress, DeliverToMailboxAndForward, RecipientTypeDetails
+    $mbx = Get-EXOMailbox -ResultSize Unlimited -Properties DisplayName, UserPrincipalName, ForwardingSmtpAddress, ForwardingAddress, DeliverToMailboxAndForward, RecipientTypeDetails
     $fwd = foreach ($m in $mbx) {
         if ($m.ForwardingSmtpAddress -or $m.ForwardingAddress) {
             [pscustomobject]@{ Mailbox=$m.UserPrincipalName; Kind='MailboxForwarding'; Target=($m.ForwardingSmtpAddress ?? $m.ForwardingAddress); KeepCopy=$m.DeliverToMailboxAndForward }
@@ -125,6 +149,10 @@ if (-not $SkipExchange) {
         [pscustomobject]@{ Domain=$d; Default=$_.Default; Type=$_.DomainType; DkimEnabled=$dkim.Enabled; DMARC=$dmarc; SPF=$spf }
     }
     Save 'domains.csv' $domains
+    # Inbound connectors: with a mail gateway (Proofpoint etc.) in front, EXO should accept your domains only from its IPs
+    $conn = Get-InboundConnector | Select-Object Name, ConnectorType, Enabled, RestrictDomainsToIPAddresses, EFSkipLastIP,
+        @{n='SenderIPAddresses';e={ $_.SenderIPAddresses -join ';' }}, @{n='EFSkipIPs';e={ $_.EFSkipIPs -join ';' }}, @{n='SenderDomains';e={ $_.SenderDomains -join ';' }}
+    Save 'inbound-connectors.csv' $conn
 }
 
 # Headline numbers for the findings memo
@@ -133,6 +161,7 @@ $summary = [ordered]@{
     EligibleGlobalAdmins   = @($eligible | Where-Object Role -eq 'Global Administrator').Count
     GuestsStale90d         = @($guests | Where-Object { $_.DaysSinceSignIn -eq 'never' -or $_.DaysSinceSignIn -gt 90 }).Count
     AppsWithExpiredCreds   = @($apps | Where-Object Expired -gt 0).Count
+    ServicePrincipalsIdle90d = @($spReport | Where-Object { $_.Origin -ne 'Microsoft' -and $_.Enabled -and ($_.DaysSinceSignIn -eq 'never' -or $_.DaysSinceSignIn -gt 90) }).Count
     AdminConsentedApps     = @($consents | Where-Object ConsentType -eq 'AllPrincipals').Count
     UsersWithoutMfa        = @($mfa | Where-Object { -not $_.IsMfaRegistered }).Count
     ExternalForwarding     = if ($fwd) { @($fwd).Count } else { 'skipped' }
