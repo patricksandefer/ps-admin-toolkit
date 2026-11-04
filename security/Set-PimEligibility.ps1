@@ -56,4 +56,3 @@ foreach ($row in $rows) {
         } catch { Write-Warning "Remove active failed for $($row.Upn)/$($row.Role): $_" }
     }
 }
-Disconnect-MgGraph | Out-Null

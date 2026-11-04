@@ -22,4 +22,3 @@ foreach ($p in $policies) {
     Write-Host ("{0,-50} {1,-32} -> {2}" -f $p.DisplayName, $p.State, $path)
 }
 Write-Host "Exported $($policies.Count) policies to $OutDir"
-Disconnect-MgGraph | Out-Null

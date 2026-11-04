@@ -40,4 +40,3 @@ foreach ($f in $files) {
         } catch { Write-Warning "Failed $($f.Name): $_" }
     }
 }
-Disconnect-MgGraph | Out-Null
