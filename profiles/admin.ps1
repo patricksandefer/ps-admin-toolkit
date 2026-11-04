@@ -29,7 +29,7 @@ $null = Import-ToolkitSettings
 
 # Graph sign-in through the Windows account broker (the signed-in admin identity), not a browser pop-up.
 # The pop-up fails on this laptop profile; fallback if WAM misbehaves: Connect-MgGraph ... -UseDeviceCode
-if (Get-Command Set-MgGraphOption -ErrorAction SilentlyContinue) { Set-MgGraphOption -EnableLoginByWAM $true }
+try { Set-MgGraphOption -EnableLoginByWAM $true -ErrorAction Stop } catch { }   # older Microsoft.Graph.Authentication versions; newer ones use WAM by default and lack the parameter
 
 function global:prompt {
     $ok  = $?
