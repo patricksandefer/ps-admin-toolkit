@@ -8,7 +8,10 @@
 param([string]$OutDir = 'C:\Admin\CA')
 
 Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Identity.SignIns
-Connect-MgGraph -Scopes 'Policy.Read.All' -NoWelcome
+# Reuse an existing Graph session (e.g. from Connect-Admin); otherwise sign in with device code.
+if (-not (Get-MgContext)) {
+    Connect-MgGraph -Scopes 'Policy.Read.All' -UseDeviceCode -NoWelcome
+}
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 
 $policies = Get-MgIdentityConditionalAccessPolicy -All

@@ -33,7 +33,8 @@ if (($EndDate - $StartDate).TotalDays -gt 30) { throw 'Max 30 days; split the re
 if ($EndDate -le (Get-Date)) { throw 'EndDate is in the past.' }
 
 Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Groups, Microsoft.Graph.Users
-if ($Identity) { Connect-MgGraph -Identity -NoWelcome } else { Connect-MgGraph -Scopes 'GroupMember.ReadWrite.All','User.Read.All' -NoWelcome }
+if ($Identity) { Connect-MgGraph -Identity -NoWelcome }
+elseif (-not (Get-MgContext)) { Connect-MgGraph -Scopes 'GroupMember.ReadWrite.All','User.Read.All' -UseDeviceCode -NoWelcome }   # reuse Connect-Admin session if present
 
 $group = Get-MgGroup -Filter "displayName eq '$GroupName'"
 $user  = Get-MgUser  -UserId $UserPrincipalName

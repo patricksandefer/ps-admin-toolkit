@@ -41,7 +41,10 @@ $Folders = @(
 # ---- 1. Folders via Graph (own mailbox) ----
 if (-not $SkipFolders) {
     Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Mail -ErrorAction Stop
-    Connect-MgGraph -Scopes 'Mail.ReadWrite' -NoWelcome
+    # Reuse an existing Graph session (e.g. from Connect-Admin); otherwise sign in with device code.
+    if (-not (Get-MgContext)) {
+        Connect-MgGraph -Scopes 'Mail.ReadWrite' -UseDeviceCode -NoWelcome
+    }
     $me = 'me'
     $inboxId = (Get-MgUserMailFolder -UserId $me -Filter "displayName eq 'Inbox'").Id
     function New-FolderPath([string]$Path) {
