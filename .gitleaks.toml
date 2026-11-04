@@ -8,7 +8,7 @@ id = "guid-tenant-or-object-id"
 description = "GUID that may be a tenant, subscription, app, or object id"
 regex = '''\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b'''
 [rules.allowlist]
-regexes = ['''00000000-0000-0000-0000-000000000000''', '''<[A-Z-]+>''']
+regexes = ['''00000000-0000-0000-0000-000000000000''', '''f8cdef31-a31e-4b4a-93e4-5f571e91255a''', '''<[A-Z-]+>''']   # second = Microsoft's public first-party app tenant
 
 [[rules]]
 id = "company-domain"

@@ -78,6 +78,8 @@ Save 'app-consents.csv' $consents
 
 # 3b. Service principal sign-in activity (runbook B3: apps with no sign-ins in 90 days -> disable, wait, delete)
 $tenantId = (Get-MgContext).TenantId
+# Microsoft's public first-party tenant (identical in every tenant; documented by Microsoft, not a secret). gitleaks:allow
+$MicrosoftFirstPartyTenant = 'f8cdef31-a31e-4b4a-93e4-5f571e91255a'
 $spActivity = @{}
 try {
     Get-MgReportServicePrincipalSignInActivity -All -ErrorAction Stop | ForEach-Object {
@@ -90,7 +92,7 @@ try {
 $spReport = $sps | ForEach-Object {
     $last = $spActivity[$_.AppId]
     [pscustomobject]@{ DisplayName=$_.DisplayName; AppId=$_.AppId; Type=$_.ServicePrincipalType; Enabled=$_.AccountEnabled
-        Origin=(if ($_.AppOwnerOrganizationId -eq $tenantId) { 'ThisTenant' } elseif ($_.AppOwnerOrganizationId -eq 'f8cdef31-a31e-4b4a-93e4-5f571e91255a') { 'Microsoft' } else { 'ThirdParty' })
+        Origin=(if ($_.AppOwnerOrganizationId -eq $tenantId) { 'ThisTenant' } elseif ($_.AppOwnerOrganizationId -eq $MicrosoftFirstPartyTenant) { 'Microsoft' } else { 'ThirdParty' })
         Created=$_.CreatedDateTime; LastSignIn=$last
         DaysSinceSignIn=(if ($last) { [int]((Get-Date) - $last).TotalDays } else { 'never' })
         HasConsents=[bool]($consents | Where-Object App -eq $_.DisplayName) }
